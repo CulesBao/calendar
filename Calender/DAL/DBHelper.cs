@@ -8,12 +8,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Security.Principal;
+using MySql.Data.MySqlClient;
 
 namespace Calender.DAL
 {
     internal class DBHelper
     {
-        private SqlConnection _cnn;
+        private MySqlConnection _cnn;   
         private static DBHelper _Instance;
 
         public static DBHelper Instance
@@ -22,7 +23,7 @@ namespace Calender.DAL
             {
                 if (_Instance == null)
                 {
-                    string s = @"Data Source=THANHTULAPTOP\SQLEXPRESS;Initial Catalog=OOAD;Integrated Security=True";
+                    string s = @"datasource=127.0.0.1;port=3306;username=root;password=;database=ooad;";
                     _Instance = new DBHelper(s);
                 }
                 return _Instance;
@@ -32,13 +33,13 @@ namespace Calender.DAL
 
         public DBHelper(string s)
         {
-            _cnn = new SqlConnection(s);
+            _cnn = new MySqlConnection(s);
         }
 
         public DataTable GetRecords(string query)
         {
             DataTable dt = new DataTable();
-            SqlDataAdapter da = new SqlDataAdapter(query, _cnn);
+            MySqlDataAdapter da = new MySqlDataAdapter(query, _cnn);
             _cnn.Open();
             da.Fill(dt);
             _cnn.Close();
@@ -47,7 +48,7 @@ namespace Calender.DAL
 
         public void ExecuteDB(string query)
         {
-            SqlCommand cmd = new SqlCommand(query, _cnn);
+            MySqlCommand cmd = new MySqlCommand(query, _cnn);
             _cnn.Open();
             cmd.ExecuteNonQuery();
             _cnn.Close();
@@ -57,7 +58,7 @@ namespace Calender.DAL
         {
             try
             {
-                SqlCommand cmd = new SqlCommand(query, _cnn);
+                MySqlCommand cmd = new MySqlCommand(query, _cnn);
                 _cnn.Open();
                 cmd.Parameters.AddWithValue("@IDAccount", appt.IDAccount); 
                 cmd.Parameters.AddWithValue("@NameAppt", appt.NameAppt);
@@ -79,7 +80,7 @@ namespace Calender.DAL
         {
             try
             {
-                SqlCommand cmd = new SqlCommand(query, _cnn);
+                MySqlCommand cmd = new MySqlCommand(query, _cnn);
                 _cnn.Open();
                 cmd.Parameters.AddWithValue("@IDAppt", appt.IDAppt);
                 cmd.Parameters.AddWithValue("@IDAccount", idAcc);
