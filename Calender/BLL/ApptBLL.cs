@@ -1,12 +1,8 @@
-﻿using Calender.DTO;
-using Calender.DAL;
+﻿using Calendar.DAL;
+using Calender.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Security.Principal;
 
 namespace Calender.BLL
 {
@@ -27,182 +23,238 @@ namespace Calender.BLL
             private set { }
         }
 
-        public ApptBLL()
-        {
-
-        }
-
-        //lấy ra ApptView từ appt
         public ApptView GetApptView_BLL(Appt appt)
         {
-            ApptView apptView = new ApptView()
+            try
             {
-                IDAppt = appt.IDAppt,
-                Creator = AccountBLL.Instance.GetUsername(appt.IDAccount),
-                NameAppt = appt.NameAppt,
-                LocationAppt = appt.LocationAppt,
-                TimeStart = appt.TimeStart,
-                TimeEnd = appt.TimeEnd,
-            };
-            return apptView;
+                return new ApptView
+                {
+                    IDAppt = appt.IDAppt,
+                    Creator = AccountBLL.Instance.GetUsername(appt.IDAccount),
+                    NameAppt = appt.NameAppt,
+                    LocationAppt = appt.LocationAppt,
+                    TimeStart = appt.TimeStart,
+                    TimeEnd = appt.TimeEnd
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error converting Appt to ApptView: {ex.Message}");
+            }
         }
 
-        //lấy ra Appt là meeting từ IDAppt
         public Appt GetApptMtByIDAppt_BLL(int IDAppt)
         {
-            return ApptDAL.Instance.GetApptMtByIDAppt(IDAppt);
+            try
+            {
+                return ApptDAL.Instance.GetApptMtByIDAppt(IDAppt);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting meeting by IDAppt {IDAppt}: {ex.Message}");
+            }
         }
 
-        //lấy ra ApptView là meeting từ IDAppt
         public ApptView GetApptViewByIDAppt_BLL(int IDAppt)
         {
-            Appt a = ApptDAL.Instance.GetApptMtByIDAppt(IDAppt);
-
-            ApptView apptView = new ApptView()
+            try
             {
-                IDAppt = IDAppt,
-                Creator = AccountBLL.Instance.GetUsername(a.IDAccount),
-                NameAppt = a.NameAppt,
-                LocationAppt = a.LocationAppt,
-                TimeStart = a.TimeStart,
-                TimeEnd = a.TimeEnd,
-            };
-            return apptView;
+                Appt a = ApptDAL.Instance.GetApptMtByIDAppt(IDAppt);
+                if (a == null)
+                    return null;
+
+                return new ApptView
+                {
+                    IDAppt = IDAppt,
+                    Creator = AccountBLL.Instance.GetUsername(a.IDAccount),
+                    NameAppt = a.NameAppt,
+                    LocationAppt = a.LocationAppt,
+                    TimeStart = a.TimeStart,
+                    TimeEnd = a.TimeEnd
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting ApptView by IDAppt {IDAppt}: {ex.Message}");
+            }
         }
 
-
-        //list ApptView không là meeting + có cùng IDAcc
         public List<ApptView> GetListApptViewNotMtByIDAcc_BLL(int IDAccount)
         {
-            List<ApptView> listApptView = new List<ApptView>();
-            foreach (Appt appt in ApptDAL.Instance.GetAllApptNotMtByIDAcc_DAL(IDAccount))
+            try
             {
-                listApptView.Add(GetApptView_BLL(appt));
-            }
-            return listApptView;
-        }
-
-        //kiểm tra xem có appt (phải hoặc k phải meeting) bị trùng tgian không
-        public Appt CheckSameAppt_BLL(Appt a)
-        {
-            foreach (Appt appt in ApptDAL.Instance.GetAllAppt_DAL(a.IDAccount))
-            {
-                if (a.TimeStart >= appt.TimeStart && a.TimeStart < appt.TimeEnd)
-                {
-                    return appt;
-                }
-            }
-            return null;
-        }
-
-        //kiểm tra xem có appt không là meeting + có cùng IDAcc bị trùng tgian không
-        public Appt CheckSameApptNotMtByIDAcc_BLL(Appt a)
-        {
-            foreach (Appt appt in ApptDAL.Instance.GetAllApptNotMtByIDAcc_DAL(a.IDAccount))
-            {
-                if (a.TimeStart >= appt.TimeStart && a.TimeStart < appt.TimeEnd)
-                {
-                    return appt;
-                }
-            }
-            return null;
-        }
-
-        //list ApptView là appt meeting do IDAcc tạo và tham gia
-        public List<ApptView> GetListApptViewMt_BLL(int IDAccount)
-        {
-            List<ApptView> listApptView = new List<ApptView>();
-
-            //meeting do IDAcc tạo
-            foreach(Appt appt in ApptDAL.Instance.GetAllApptMtByIDAcc_DAL(IDAccount))
-            {
-                listApptView.Add(GetApptView_BLL(appt));
-            }
-
-            //meeting IDAcc tham gia
-            foreach (Meeting mt in ApptDAL.Instance.GetAllMeetingByIDAccount_DAL(IDAccount))
-            {
-                listApptView.Add(GetApptViewByIDAppt_BLL(mt.IDAppt));
-            }
-
-            return listApptView;
-        }
-
-        //kiểm tra có ApptView là appt meeting do IDAcc tạo và tham gia bị trùng không
-        public bool IsSameApptViewMt_BLL(Appt a)
-        {
-            List<ApptView> listApptView = new List<ApptView>();
-
-            //meeting do IDAcc tạo
-            foreach (Appt appt in ApptDAL.Instance.GetAllApptMtByIDAcc_DAL(a.IDAccount))
-            {
-                if (DateTime.Compare(a.TimeStart, appt.TimeStart) == 0 && DateTime.Compare(a.TimeEnd, appt.TimeEnd) == 0)
-                {
-                    return true;
-                }
-            }
-
-            //meeting IDAcc tham gia
-            foreach (Meeting mt in ApptDAL.Instance.GetAllMeetingByIDAccount_DAL(a.IDAccount))
-            {
-                ApptView av = GetApptViewByIDAppt_BLL(mt.IDAppt);
-                if (DateTime.Compare(a.TimeStart, av.TimeStart) == 0 && DateTime.Compare(a.TimeEnd, av.TimeEnd) == 0)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        //list ApptView là appt meeting + khác IDAcc có trùng địa điểm và tgian
-        public List<ApptView> GetSameApptMtNotByIDAcc_BLL(Appt a)
-        {
-            List<ApptView> listApptView = new List<ApptView>();
-            foreach (Appt appt in ApptDAL.Instance.GetAllApptMtNotByIDAcc_DAL(a.IDAccount))
-            {
-                if (DateTime.Compare(a.TimeStart, appt.TimeStart) == 0 && DateTime.Compare(a.TimeEnd, appt.TimeEnd) == 0 && a.NameAppt == appt.NameAppt)
+                List<ApptView> listApptView = new List<ApptView>();
+                foreach (Appt appt in ApptDAL.Instance.GetAllApptNotMtByIDAcc_DAL(IDAccount))
                 {
                     listApptView.Add(GetApptView_BLL(appt));
                 }
+                return listApptView;
             }
-            return listApptView;
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting non-meeting ApptViews for IDAccount {IDAccount}: {ex.Message}");
+            }
         }
 
-        //list Reminder của 1 người
+        public Appt CheckSameAppt_BLL(Appt a)
+        {
+            try
+            {
+                // Đẩy logic kiểm tra xuống DAL để tối ưu
+                return ApptDAL.Instance.CheckAppointmentOverlap_DAL(a.IDAccount, a.TimeStart, a.TimeEnd);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking appointment overlap: {ex.Message}");
+            }
+        }
+
+        public Appt CheckSameApptNotMtByIDAcc_BLL(Appt a)
+        {
+            try
+            {
+                return ApptDAL.Instance.CheckNonMeetingAppointmentOverlap_DAL(a.IDAccount, a.TimeStart, a.TimeEnd);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking non-meeting appointment overlap: {ex.Message}");
+            }
+        }
+
+        public List<ApptView> GetListApptViewMt_BLL(int IDAccount)
+        {
+            try
+            {
+                List<ApptView> listApptView = new List<ApptView>();
+
+                // Meeting do IDAccount tạo
+                foreach (Appt appt in ApptDAL.Instance.GetAllApptMtByIDAcc_DAL(IDAccount))
+                {
+                    listApptView.Add(GetApptView_BLL(appt));
+                }
+
+                // Meeting IDAccount tham gia
+                foreach (Meeting mt in ApptDAL.Instance.GetAllMeetingByIDAccount_DAL(IDAccount))
+                {
+                    ApptView view = GetApptViewByIDAppt_BLL(mt.IDAppt);
+                    if (view != null)
+                        listApptView.Add(view);
+                }
+
+                // Loại bỏ trùng lặp dựa trên IDAppt
+                return listApptView
+                    .GroupBy(v => v.IDAppt)
+                    .Select(g => g.First())
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting meeting ApptViews for IDAccount {IDAccount}: {ex.Message}");
+            }
+        }
+
+        public bool IsSameApptViewMt_BLL(Appt a)
+        {
+            try
+            {
+                return ApptDAL.Instance.CheckMeetingOverlap_DAL(a.IDAccount, a.NameAppt, a.TimeStart, a.TimeEnd);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking meeting overlap: {ex.Message}");
+            }
+        }
+
+        public List<ApptView> GetSameApptMtNotByIDAcc_BLL(Appt a)
+        {
+            try
+            {
+                List<ApptView> listApptView = new List<ApptView>();
+                foreach (Appt appt in ApptDAL.Instance.GetAllApptMtNotByIDAcc_DAL(a.IDAccount))
+                {
+                    if (appt.TimeStart == a.TimeStart && appt.TimeEnd == a.TimeEnd && appt.NameAppt == a.NameAppt)
+                    {
+                        listApptView.Add(GetApptView_BLL(appt));
+                    }
+                }
+                return listApptView;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting matching meeting ApptViews: {ex.Message}");
+            }
+        }
+
         public List<ApptView> GetApptViewReminderByIDAcc_BLL(int IDAccount)
         {
-            List<ApptView> listApptView = new List<ApptView>();
-            foreach (Appt appt in ApptDAL.Instance.GetAllReminderByIDAccount_DAL(IDAccount))
+            try
             {
-                listApptView.Add(GetApptView_BLL(appt));
+                List<ApptView> listApptView = new List<ApptView>();
+                foreach (Appt appt in ApptDAL.Instance.GetAllReminderByIDAccount_DAL(IDAccount))
+                {
+                    listApptView.Add(GetApptView_BLL(appt));
+                }
+                return listApptView;
             }
-            return listApptView;
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting reminder ApptViews for IDAccount {IDAccount}: {ex.Message}");
+            }
         }
 
         public void AddAppt_BLL(Appt appt)
         {
-            ApptDAL.Instance.AddAppt_DAL(appt);
+            try
+            {
+                ApptDAL.Instance.AddAppt_DAL(appt);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding appointment: {ex.Message}");
+            }
         }
 
         public void UpdateAppt_BLL(Appt appt)
         {
-            ApptDAL.Instance.UpdateAppt_DAL(appt);
+            try
+            {
+                ApptDAL.Instance.UpdateAppt_DAL(appt);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error updating appointment: {ex.Message}");
+            }
         }
 
         public void AddMeeting_BLL(Appt appt, int idAcc)
         {
-            ApptDAL.Instance.AddMeeting_DAL(appt, idAcc);
+            try
+            {
+                ApptDAL.Instance.AddMeeting_DAL(appt, idAcc);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error adding to meeting: {ex.Message}");
+            }
         }
 
-        //list acc tham gia vào cùng 1 meeting
         public List<Account> GetListAccountSameMeeting_BLL(int IDAppt)
         {
-            List<Account> list = new List<Account> ();
-            foreach(int i in ApptDAL.Instance.GetListIDAccountSameMeeting_DAL(IDAppt))
+            try
             {
-                list.Add(AccountDAL.Instance.GetAccountByIDAcc(i));
+                List<Account> list = new List<Account>();
+                foreach (int id in ApptDAL.Instance.GetListIDAccountSameMeeting_DAL(IDAppt))
+                {
+                    Account acc = AccountDAL.Instance.GetAccountByIDAcc(id);
+                    if (acc != null)
+                        list.Add(acc);
+                }
+                return list;
             }
-            return list;
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting accounts for meeting IDAppt {IDAppt}: {ex.Message}");
+            }
         }
     }
 }

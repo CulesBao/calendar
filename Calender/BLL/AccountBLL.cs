@@ -1,11 +1,6 @@
-﻿using Calender.DTO;
-using Calender.DAL;
+﻿using Calendar.DAL;
+using Calender.DTO;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace Calender.BLL
 {
@@ -26,27 +21,30 @@ namespace Calender.BLL
             private set { }
         }
 
-        public AccountBLL()
-        {
-
-        }
-
         public Account CheckAccount_BLL(string username, string pwd)
         {
-            foreach (Account acc in AccountDAL.Instance.GetAllAccount_DAL())
+            try
             {
-                if (username == acc.Username && pwd == acc.Pwd) return acc;
+                Account acc = AccountDAL.Instance.AuthenticateUser_DAL(username, pwd);
+                return acc;
             }
-            return null;
+            catch (Exception ex)
+            {
+                throw new Exception($"Error checking account: {ex.Message}");
+            }
         }
 
         public string GetUsername(int id)
         {
-            foreach (Account acc in AccountDAL.Instance.GetAllAccount_DAL())
+            try
             {
-                if (id == acc.IDAccount) return acc.Username;
+                Account acc = AccountDAL.Instance.GetAccountByIDAcc(id);
+                return acc?.Username;
             }
-            return null;
+            catch (Exception ex)
+            {
+                throw new Exception($"Error getting username for ID {id}: {ex.Message}");
+            }
         }
     }
 }

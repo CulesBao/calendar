@@ -26,7 +26,7 @@ namespace Calender.View
                 Account acc = AccountBLL.Instance.CheckAccount_BLL(txt_username.Text, txt_pwd.Text);
                 this.Hide();
                 MainForm mainform = new MainForm(acc.IDAccount, txt_username.Text);
-                mainform.Closed += (s, args) => this.Close(); //đóng MainForm thì LoginForm cũng đóng
+                mainform.Closed += (s, args) => this.Close(); 
                 mainform.ShowDialog();
             }
             else

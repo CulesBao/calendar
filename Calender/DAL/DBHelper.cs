@@ -1,20 +1,14 @@
 ﻿using Calender.DTO;
 using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Data.SqlClient;
 using System.Windows.Forms;
-using System.Security.Principal;
-using MySql.Data.MySqlClient;
 
-namespace Calender.DAL
+namespace Calendar.DAL
 {
     internal class DBHelper
     {
-        private MySqlConnection _cnn;   
+        private SqlConnection _cnn;
         private static DBHelper _Instance;
 
         public static DBHelper Instance
@@ -23,73 +17,140 @@ namespace Calender.DAL
             {
                 if (_Instance == null)
                 {
-                    string s = @"datasource=127.0.0.1;port=3306;username=root;password=;database=ooad;";
-                    _Instance = new DBHelper(s);
+                    string connectionString = @"Data Source=HUYNHTIENNHAT;Initial Catalog=ooad;Integrated Security=True;";
+                    _Instance = new DBHelper(connectionString);
                 }
                 return _Instance;
             }
             private set { }
         }
 
-        public DBHelper(string s)
+        public DBHelper(string connectionString)
         {
-            _cnn = new MySqlConnection(s);
+            _cnn = new SqlConnection(connectionString);
         }
 
+        // Lấy dữ liệu từ database với truy vấn không tham số
         public DataTable GetRecords(string query)
         {
             DataTable dt = new DataTable();
-            MySqlDataAdapter da = new MySqlDataAdapter(query, _cnn);
-            _cnn.Open();
-            da.Fill(dt);
-            _cnn.Close();
+            try
+            {
+                using (SqlDataAdapter da = new SqlDataAdapter(query, _cnn))
+                {
+                    da.Fill(dt);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error retrieving records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
             return dt;
         }
 
-        public void ExecuteDB(string query)
+        // Lấy dữ liệu với truy vấn có tham số
+        public DataTable GetRecordsWithParameters(string query, SqlParameter[] parameters)
         {
-            MySqlCommand cmd = new MySqlCommand(query, _cnn);
-            _cnn.Open();
-            cmd.ExecuteNonQuery();
-            _cnn.Close();
+            DataTable dt = new DataTable();
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand(query, _cnn))
+                {
+                    if (parameters != null)
+                    {
+                        cmd.Parameters.AddRange(parameters);
+                    }
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error retrieving records: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return dt;
         }
 
+        // Thực thi câu lệnh INSERT, UPDATE, DELETE
+        public void ExecuteDB(string query)
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand(query, _cnn))
+                {
+                    _cnn.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error executing query: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (_cnn.State == ConnectionState.Open)
+                    _cnn.Close();
+            }
+        }
+
+        // Thêm hoặc cập nhật Appointment
         public void AddOrUpdateAppt(string query, Appt appt)
         {
             try
             {
-                MySqlCommand cmd = new MySqlCommand(query, _cnn);
-                _cnn.Open();
-                cmd.Parameters.AddWithValue("@IDAccount", appt.IDAccount); 
-                cmd.Parameters.AddWithValue("@NameAppt", appt.NameAppt);
-                cmd.Parameters.AddWithValue("@LocationAppt", appt.LocationAppt);
-                cmd.Parameters.AddWithValue("@TimeStart", appt.TimeStart);
-                cmd.Parameters.AddWithValue("@TimeEnd", appt.TimeEnd);
-                cmd.Parameters.AddWithValue("@ReminderTime", appt.ReminderTime);
-                cmd.Parameters.AddWithValue("@IsMeeting", appt.IsMeeting);
-                cmd.ExecuteNonQuery();
-                _cnn.Close();
+                using (SqlCommand cmd = new SqlCommand(query, _cnn))
+                {
+                    cmd.Parameters.AddWithValue("@IDAccount", appt.IDAccount);
+                    cmd.Parameters.AddWithValue("@NameAppt", appt.NameAppt ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@LocationAppt", appt.LocationAppt ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@TimeStart", appt.TimeStart);
+                    cmd.Parameters.AddWithValue("@TimeEnd", appt.TimeEnd);
+                    cmd.Parameters.AddWithValue("@ReminderTime", appt.ReminderTime);
+                    cmd.Parameters.AddWithValue("@IsMeeting", appt.IsMeeting);
+
+                    _cnn.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (SqlException ex) when (ex.Message.Contains("New appointment overlaps with an existing appointment"))
+            {
+                MessageBox.Show("The appointment overlaps with an existing one. Please choose a different time.", "Overlap Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show($"Error adding/updating appointment: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (_cnn.State == ConnectionState.Open)
+                    _cnn.Close();
             }
         }
 
+        // Thêm người tham gia vào Meeting
         public void AddMeeting(string query, Appt appt, int idAcc)
         {
             try
             {
-                MySqlCommand cmd = new MySqlCommand(query, _cnn);
-                _cnn.Open();
-                cmd.Parameters.AddWithValue("@IDAppt", appt.IDAppt);
-                cmd.Parameters.AddWithValue("@IDAccount", idAcc);
-                cmd.ExecuteNonQuery();
-                _cnn.Close();
+                using (SqlCommand cmd = new SqlCommand(query, _cnn))
+                {
+                    cmd.Parameters.AddWithValue("@IDAppt", appt.IDAppt);
+                    cmd.Parameters.AddWithValue("@IDAccount", idAcc);
+
+                    _cnn.Open();
+                    cmd.ExecuteNonQuery();
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show($"Error adding to meeting: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (_cnn.State == ConnectionState.Open)
+                    _cnn.Close();
             }
         }
     }
